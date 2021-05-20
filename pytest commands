@@ -1,2 +1,23 @@
 pytest commands: python -m pytest tests\ -s coverage run -m pytest maincode
 coverage report -m tests\
+
+
+def test_insert_api_returned_data(mocker):
+    result = None
+    mock_connect = mocker.patch('psycopg2.connect')
+    mock_connect().__enter__().cursor().__enter__().fetchall.return_value = result
+    res = SQLDataActions.insert_api_returned_data(1, 301, 5363, "Travis T Adam", "rajiv nagar", "near post office",
+                                                  "Ashland", "MT", "530026", "rfdf", "rfdf", "jdjd", "data", "request",
+                                                  6553, "hsdgsdgd")
+    assert res is None
+----------------------------------------------------------------------------------------
+
+from unittest import mock
+@mock.patch("psycopg2.connect")
+def test_get_white_pages_clients_test(mock_psycopg2):
+    mock_con = mock_psycopg2.return_value
+    mock_cur = mock_con.cursor.return_value
+    mock_cur.fetchall.return_value = ["MTM", "ComplexCase"]
+    sql_data_actions = SQLDataActions()
+    res = sql_data_actions.get_white_pages_clients()
+    assert res == ["MTM", "ComplexCase"]
