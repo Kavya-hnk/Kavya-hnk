@@ -1,0 +1,453 @@
+# ARP-1603 CreateDrugListOverlap
+class CreateDrugListOverlap:
+    class CDLO_Page_Load(APIView):
+
+        def get(self, request):
+            try:
+                user_name = request.GET.get("user_name")
+
+                now = timezone.now()
+                dlobj = Clinicalvariable.objects.values().filter(
+                    Q(pmdclinicalvariabletypeid=2) | Q(retireddate__gt=now)).order_by('variablename').first()
+                DList = list()
+                DList = dlobj
+                DList = CommonFunctions.filter_out_known_bad_data(2, DList)
+                result_dict = {}
+                variable1DDL_list = []
+                variable1DDL_list.append(DList)
+
+                result_dict['variable1DDL'] = variable1DDL_list
+                result_dict['minDDL'] = CommonObjects.Static.Defaults.DrugListOverlap.OVERLAP_MIN
+                result_dict['maxDDL'] = CommonObjects.Static.Defaults.DrugListOverlap.OVERLAP_MAX
+                result_dict['lookbackDDL'] = CommonObjects.Static.Defaults.DrugListOverlap.LOOKBACK
+
+                response = {"status": "success", "message": "data found", "data": result_dict}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
+
+    class Page_PreRender(APIView):
+        def get(self, request):
+            try:
+                variable1DDL_SelectedValue = int(request.GET.get("variable1DDL_SelectedValue"))
+                variable1DDL_Items_Count = int(request.GET.get("variable1DDL_Items_Count"))
+                variable2DDL_SelectedValue = int(request.GET.get("variable2DDL_SelectedValue"))
+                variable2DDL_Items_Count = int(request.GET.get("variable2DDL_Items_Count"))
+                user = request.GET.get("user")
+
+                if (variable1DDL_Items_Count != 0 and variable1DDL_SelectedValue != -1):
+                    variable1ID = int(variable1DDL_SelectedValue)
+                    c_var_list = Clinicalvariable.objects.filter(pmdclinicalvariableid=variable1ID)
+                    Cli_Var = list(c_var_list.values())
+                    dtl_ctrl_dict = CommonFunctions.render_detail_control(user, 'Page', Cli_Var, False)
+                    variable1DetailsPNL = []
+                    variable1DetailsPNL.append(dtl_ctrl_dict)
+
+                if (variable2DDL_Items_Count != 0 and variable2DDL_SelectedValue != -1):
+                    variable2ID = int(variable2DDL_SelectedValue)
+                    c_var_list = Clinicalvariable.objects.filter(pmdclinicalvariableid=variable2ID)
+                    Cli_Var = list(c_var_list.values())
+                    dtl_ctrl_dict = CommonFunctions.render_detail_control(user, 'Page', Cli_Var, False)
+                    variable2DetailsPNL = []
+                    variable2DetailsPNL.append(dtl_ctrl_dict)
+                
+                result_dict={}
+                result_dict['variable1DetailsPNL']= variable1DetailsPNL
+                result_dict['variable2DetailsPNL']= variable2DetailsPNL
+                response = {"status": "success", "message": "data found", "data": result_dict}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
+
+    class saveDrugListOverlapBTN_OnClick(APIView):
+        def post(self, request):
+            try:
+                minDDL_SelectedValue = request.GET.get("minDDL_SelectedValue")
+                maxDDL_SelectedValue = request.GET.get("maxDDL_SelectedValue")
+                lookbackDDL_SelectedValue = request.GET.get("lookbackDDL_SelectedValue")
+                variable1DDL_SelectedValue = request.GET.get("variable1DDL_SelectedValue")
+                variable2DDL_SelectedValue = request.GET.get("variable2DDL_SelectedValue")
+                variable1DDL_SelectedItem_Text = request.GET.get("variable1DDL_SelectedItem_Text")
+                variable2DDL_SelectedItem_Text = request.GET.get("variable2DDL_SelectedItem_Text")
+
+                user = request.GET.get("user")
+
+                dl1CVarID = int(variable1DDL_SelectedValue)
+                dl2CVarID = int(variable2DDL_SelectedValue)
+
+                overlap_ins = Overlap()
+                overlap_ins.crefdruglistvariableone = dl1CVarID
+                overlap_ins.crefdruglistvariabletwo = dl2CVarID
+                now = timezone.now()
+                overlap_ins.created_at = now
+                overlap_ins.created_by = utility.committed_by(user)
+                overlap_ins.effectivedate = now
+                overlap_ins.retireddate = CommonObjects.Static.get_retired_date()
+                overlap_ins.minimumoverlap = int(minDDL_SelectedValue)
+                overlap_ins.maximumoverlap = int(maxDDL_SelectedValue)
+                overlap_ins.overridelookback = int(lookbackDDL_SelectedValue)
+# //save
+                overlap_ins.save()
+
+                cVar = Clinicalvariable()
+                cVar.pmdclinicalvariabletypeid = Clinicalvariabletype.objects.get(pmdclinicalvariabletypeid=6)
+                cVar.pmdclinicalvariablerefid = overlap_ins.crefoverlapdefinitionid
+                now = timezone.now()
+                cVar.createdat = now
+                cVar.createdby = utility.committed_by(user)
+                cVar.effectivedate = now
+                cVar.retireddate = CommonObjects.Static.get_retired_date()
+                cVar.variablename = variable1DDL_SelectedItem_Text + " - Overlap - " + variable2DDL_SelectedItem_Text
+                cVar.transferstatuscode = 0
+
+                cVar.save()
+                response = {"status": "success"}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
+
+
+# ******************************************** CreateVariable_MedicationSubstitution starts  ******************
+class CreateVariable_MedicationSubstitution:
+    drugSubMappings = []
+
+    def nounTypeList(self):
+
+        subNounTypes = [1, 3, 4]
+
+        nounTypeObj_List = Druglistnountype.objects.filter(druglistnountypeid__in=subNounTypes).order_by(
+            'druglistnountypename')
+        nounTypeList = list(nounTypeObj_List.values())
+        return nounTypeList
+
+    class Page_Load(APIView):
+        def get(self, request):
+            try:
+                result_dict = {}
+                inNounTypeDDL = {}
+                result_dict['inNounTypeDDL'] = CreateVariable_MedicationSubstitution().nounTypeList()
+                outNounTypeDDL = {}
+                result_dict['outNounTypeDDL'] = CreateVariable_MedicationSubstitution().nounTypeList()
+                result_dict['subInLookbackDDL'] = CommonObjects.Static.Defaults.DrugSubstitution.LOOKBACK_DOC
+                result_dict['subOutLookbackDDL'] = CommonObjects.Static.Defaults.DrugSubstitution.LOOKBACK_ALT_DRUGS
+                result_dict['matchMinDDL'] = CommonObjects.Static.Defaults.DrugSubstitution.MATCH_MIN
+                result_dict['matchMaxDDL'] = CommonObjects.Static.Defaults.DrugSubstitution.MATCH_MAX
+
+                response = {"status": "success", "message": "data found", "data": result_dict}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
+
+    def GetNounSelectListByType(self, nounTypeId):
+        nounList = CommonFunctions.distinct_terms_by_type_id(str(nounTypeId))
+        # nounList=["noun","nountest"]
+
+        if (nounList == None):
+            knownNounsOfType = []
+            return knownNounsOfType
+        else:
+            knownNounsOfType_obj = Druglistnoun.objects.values().filter(
+                Q(druglistnountypeid=nounTypeId) & Q(druglistnounname__isnull=False)).order_by('druglistnounname')
+            knownNounsOfType = list(knownNounsOfType_obj)
+            decremtalIndex = -1
+            for noun in nounList:
+                decremtalIndex -= 1
+                if not any(d.get('druglistnounname') == noun for d in knownNounsOfType):
+                    knownNounsOfType_new = {}
+                    knownNounsOfType_new['druglistnounname'] = noun
+                    knownNounsOfType_new['druglistnounid'] = decremtalIndex
+                    knownNounsOfType.append(knownNounsOfType_new)
+            return knownNounsOfType
+
+    class SaveNounMappingBTN_OnClick(APIView):
+
+        def post(self, request):
+            try:
+                DrugListNounSELECT_SelectedValue = request.GET.get('DrugListNounSELECT_SelectedValue')
+                DrugListNounSELECT_SelectedItem_Text = request.GET.get('DrugListNounSELECT_SelectedItem_Text')
+                inNounPatternTBX_Text = request.GET.get('inNounPatternTBX_Text')
+                inNounTypeDDL_SelectedValue = request.GET.get('inNounTypeDDL_SelectedValue')
+                outNounTypeDDL_SelectedValue = request.GET.get('outNounTypeDDL_SelectedValue')
+                matchMinDDL_SelectedValue = request.GET.get('matchMinDDL_SelectedValue')
+                incExclRDO_SelectedValue = request.GET.get('incExclRDO_SelectedValue')
+                matchMaxDDL_SelectedValue = request.GET.get('matchMaxDDL_SelectedValue')
+                codesHFD_Value = request.GET.get("codesHFD_Value", "")
+                user_name = request.GET.get("user_name")
+                inNounId = DrugListNounSELECT_SelectedValue if (
+                        str(inNounPatternTBX_Text) is None or str(inNounPatternTBX_Text) == "") else "-1"
+                inNounText = DrugListNounSELECT_SelectedItem_Text if str(inNounPatternTBX_Text) is None or str(
+                    inNounPatternTBX_Text) == '' else "%" + str(inNounPatternTBX_Text) + "%"
+
+                if inNounId.startswith("-"):
+                    DrugListNouns = Druglistnoun()
+                    now = timezone.now()
+                    DrugListNouns.createdat = now
+                    DrugListNouns.createdby = utility.committed_by(user_name)
+                    DrugListNouns.druglistnounname = inNounText
+                    DrugListNouns.ispattern = 1 if inNounText.startswith("%") else 0
+                    DrugListNouns.druglistnountypeid = Druglistnountype.objects.get(
+                        druglistnountypeid=int(inNounTypeDDL_SelectedValue))
+                    DrugListNouns.save()
+                    inNounId = str(DrugListNouns.druglistnounid)
+
+                hasMappings = False
+                if codesHFD_Value is not None:
+
+                    for code in (codesHFD_Value).split('^'):
+                        # hasMappings = True
+                        codeParts = str(code).split('|')
+                        if codeParts[0].startswith("-"):
+                            DrugListNouns = Druglistnoun()
+                            now = timezone.now()
+                            DrugListNouns.createdat = now
+                            DrugListNouns.createdby = utility.committed_by(user_name)
+                            DrugListNouns.druglistnounname = codeParts[1]
+                            DrugListNouns.ispattern = 1 if str(codeParts[1]).startswith("%") else 0
+                            DrugListNouns.druglistnountypeid = Druglistnountype.objects.get(
+                                druglistnountypeid=int(outNounTypeDDL_SelectedValue))
+                            DrugListNouns.save()
+                            codeParts[0] = str(DrugListNouns.druglistnounid)
+
+                            drugSub = CommonObjects.Simple_DrugSubstitutionMapping()
+                            # drugSub.__id = drugSub.id0_
+                            drugSub.in_noun_id = inNounId
+                            drugSub.in_noun_name = DrugListNounSELECT_SelectedItem_Text
+                            drugSub.in_noun_type = int(inNounTypeDDL_SelectedValue)
+                            drugSub.out_noun_id = int(codeParts[0])
+                            drugSub.out_noun_name = int(codeParts[1])
+                            drugSub.__matchminimum = utility.get_override_value(matchMinDDL_SelectedValue,
+                                                                                CommonObjects.Static.Defaults.DrugSubstitution.MATCH_MIN)
+                            drugSub.match_maximum = int(matchMaxDDL_SelectedValue),
+                            drugSub.is_exclusion = bool(int(incExclRDO_SelectedValue))
+                            drugSubdetails = {key: value for key, value in drugSub.__dict__.items() if
+                                              not key.startswith('__') and not callable(key)}
+                            CreateVariable_MedicationSubstitution.drugSubMappings.append(drugSubdetails)
+
+                if hasMappings is False:
+                    drugSub = CommonObjects.Simple_DrugSubstitutionMapping()
+                    drugSub.in_noun_id = inNounId
+                    drugSub.in_noun_name = DrugListNounSELECT_SelectedItem_Text
+                    drugSub.in_noun_type = int(inNounTypeDDL_SelectedValue)
+                    drugSub.match_minimum = utility.get_override_value(matchMinDDL_SelectedValue,
+                                                                       CommonObjects.Static.Defaults.DrugSubstitution.MATCH_MIN)
+                    drugSub.match_maximum = int(matchMaxDDL_SelectedValue)
+                    drugSub.is_exclusion = bool(int(incExclRDO_SelectedValue))
+                    drugSubdetails = {key: value for key, value in drugSub.__dict__.items() if
+                                      not key.startswith('__') and not callable(key)}
+                    CreateVariable_MedicationSubstitution.drugSubMappings.append(drugSubdetails)
+
+                DrugSubMappingRPTR = {}
+                DrugSubMappingRPTR["DataSource"] = CreateVariable_MedicationSubstitution.drugSubMappings
+
+                response = {"status": "success", "message": "data found", "data": DrugSubMappingRPTR}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
+
+    class SaveDrugSubMapBTN_OnClick(APIView):
+        def post(self, request):
+            try:
+                subNameTBX_Text = request.GET.get("subNameTBX_Text")
+                subInLookbackDDL_SelectedValue = request.GET.get("subInLookbackDDL_SelectedValue")
+                subOutLookbackDDL_SelectedValue = request.GET.get("subOutLookbackDDL_SelectedValue")
+                user_name = request.GET.get("user_name")
+
+                subMap = Substitutionmap()
+                now = timezone.now()
+                subMap.createdat = now
+                subMap.createdby = utility.committed_by(user_name)
+                subMap.effectivedate = now
+                subMap.substitutionmapname = str(subNameTBX_Text)
+                subMap.inlookbackoverride = utility.get_override_value(subInLookbackDDL_SelectedValue,
+                                                                        CommonObjects.Static.Defaults.DrugSubstitution.LOOKBACK_DOC)
+                subMap.outlookbackoverride = utility.get_override_value(subOutLookbackDDL_SelectedValue,
+                                                                        CommonObjects.Static.Defaults.DrugSubstitution.LOOKBACK_ALT_DRUGS)
+                subMap.retireddate = CommonObjects.Static.get_retired_date()
+                subMap.substitutionmaptypeid = Substitutionmaptype.objects.get(substitutionmaptypeid=1)
+                subMap.SubstitutionMappings = []
+                for mapping in CreateVariable_MedicationSubstitution.drugSubMappings:
+                    # // If this formulary term isn't yet a noun, add it
+                    if (int(mapping['_Simple_DrugSubstitutionMapping__innounid']) < 0):
+                        noun = Druglistnoun()
+                        now = timezone.now()
+                        noun.createdat = now
+                        noun.createdby = utility.committed_by(user_name)
+                        noun.druglistnounname = mapping['_Simple_DrugSubstitutionMapping__innounname']
+                        noun.ispattern = 0
+                        noun.druglistnountypeid = Druglistnountype.objects.get(
+                            druglistnountypeid=mapping['_Simple_DrugSubstitutionMapping__innountype'])
+                        noun.save()
+                        mapping['_Simple_DrugSubstitutionMapping__innounid'] = noun.druglistnounid
+# save
+                    subMap.save()
+                    subMappings = Substitutionmapping()
+                    subMappings.drugsubstitutionmapid=Substitutionmap.objects.get(drugsubstitutionmapid=subMap.drugsubstitutionmapid)
+                    now = timezone.now()
+                    subMappings.createdat = now
+                    subMappings.createdby = utility.committed_by(user_name)
+                    subMappings.indrugnounid = mapping['_Simple_DrugSubstitutionMapping__innounid']
+                    subMappings.isexclusion = (mapping['_Simple_DrugSubstitutionMapping__isexclusion'])
+                    subMappings.outdrugnounid = mapping['_Simple_DrugSubstitutionMapping__outnounid']
+                    subMappings.retireddate = CommonObjects.Static.get_retired_date()
+                    subMappings.matchmaximum = int(mapping['_Simple_DrugSubstitutionMapping__matchmaximum'])
+                    subMappings.matchminimum = mapping['_Simple_DrugSubstitutionMapping__matchminimum']
+                    subMappings.effectivedate = now
+                    subMappings.save()
+                    subMappings_details = {key: value for key, value in subMappings.__dict__.items() if
+                                            not key.startswith('__') and not callable(key)}
+                    subMap.SubstitutionMappings.append(subMappings_details)
+
+                    subMap.save()
+
+                inId = 0
+                # // In Variable
+                cVar1 = Clinicalvariable()
+                now = timezone.now()
+                cVar1.pmdclinicalvariabletypeid = Clinicalvariabletype.objects.get(pmdclinicalvariabletypeid=12)
+                cVar1.createdat = now
+                cVar1.createdby = utility.committed_by(user_name)
+                cVar1.effectivedate = now
+                cVar1.retireddate = CommonObjects.Static.get_retired_date()
+                cVar1.pmdclinicalvariablerefid = subMap.drugsubstitutionmapid
+                cVar1.variablename = "Substitution Variable In for " + str(subMap.substitutionmapname)
+                cVar1.transferstatuscode = 0
+
+                # // Out Variable
+                cVar2 = Clinicalvariable()
+                now = timezone.now()
+                cVar2.pmdclinicalvariabletypeid = Clinicalvariabletype.objects.get(pmdclinicalvariabletypeid=12)
+                cVar2.createdat = now
+                cVar2.createdby = utility.committed_by(user_name)
+                cVar2.effectivedate = now
+                cVar2.retireddate = CommonObjects.Static.get_retired_date()
+                cVar2.pmdclinicalvariablerefid = subMap.drugsubstitutionmapid
+                cVar2.variablename = "Substitution Variable Out for " + str(subMap.substitutionmapname)
+                cVar2.transferstatuscode = 0
+
+                cVar1.save()
+                cVar2.save()
+
+                inId = cVar1.pmdclinicalvariableid
+                for mapping in range(len(subMap.SubstitutionMappings)):
+                    # // In Claims pattern
+                    claimp_var = Claimspattern()
+                    claimp_var.pmdclinicalvariableid = cVar1.pmdclinicalvariableid
+                    claimp_var.drugsubstitutionmapid = subMap.SubstitutionMappings[mapping]['drugsubstitutionmapid_id']
+                    claimp_var.drugsubstitutionmappingid = subMap.SubstitutionMappings[mapping][
+                        'drugsubstitutionmappingid']
+                    claimp_var.pattern = "A"
+                    claimp_var.iscondensed = 1
+                    claimp_var.isfinding = 1
+                    claimp_var.matchanyorall = "All"
+
+                    # // Out Claims Pattern
+
+                    claimp_var_out = Claimspattern()
+                    claimp_var_out.pmdclinicalvariableid = cVar2.pmdclinicalvariableid
+                    claimp_var_out.drugsubstitutionmapid = subMap.SubstitutionMappings[mapping][
+                        'drugsubstitutionmapid_id']
+                    claimp_var_out.drugsubstitutionmappingid = subMap.SubstitutionMappings[mapping][
+                        'drugsubstitutionmappingid']
+                    claimp_var_out.pattern = "A"
+                    claimp_var_out.iscondensed = 1
+                    claimp_var_out.isfinding = 1
+                    claimp_var_out.matchanyorall = "All"
+
+                    claimp_var.save()
+                    claimp_var_out.save()
+
+                user = user_name
+                timeout = 60 * 5
+                # // This is sometimes a VERY long process.  I can't place a reasonable upper bound which
+                # // will accomodate short/long running scenarios without introducing a potentially selfish
+                # // resource consumer here.  The Realization script needs to be streamlined
+
+                # with connections['rulestore_realization'].cursor() as c:
+                #     try:
+                #         c.execute('''select * from crefmanager.RealizeDrubSubstitution({})'''.format(subMap.drugsubstitutionmapid))
+                #         ruleList = list(c.fetchall())
+                #     finally:
+                #         c.close()
+                result_dict = {}
+                result_dict["inId"] = inId
+                response = {"status": "success", "message": "data found", "data": result_dict}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
+
+    class inNounTypeDDL_OnSelectedIndexChanged(APIView):
+
+        def get(self, request):
+            try:
+                inNounTypeDDL_SelectedValue = request.GET.get('inNounTypeDDL_SelectedValue')
+
+                nounTypeId = int(inNounTypeDDL_SelectedValue)
+
+                nounList = CreateVariable_MedicationSubstitution().GetNounSelectListByType(nounTypeId)
+                if len(nounList) == 0:
+                    response = {"status": "success", "message": "data not found", "data": []}
+                    return JsonResponse(response, status=HTTP_200_OK)
+
+                DrugListNounSELECT = {}
+                DrugListNounSELECT["DataSource"] = nounList
+                response = {"status": "success", "message": "data found", "data": DrugListNounSELECT}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
+
+    class outNounTypeDDL_OnSelectedIndexChanged(APIView):
+        def get(self, request):
+            try:
+                outNounTypeDDL_SelectedValue = request.GET.get("outNounTypeDDL_SelectedValue")
+
+                nounTypeId = int(outNounTypeDDL_SelectedValue)
+
+                nounList = CreateVariable_MedicationSubstitution().GetNounSelectListByType(nounTypeId)
+                if len(nounList) == 0:
+                    response = {"status": "success", "message": "data not found", "data": []}
+                    return JsonResponse(response, status=HTTP_200_OK)
+
+                response = {"status": "success", "message": "data found", "data": nounList}
+                return JsonResponse(response, status=HTTP_200_OK)
+
+            except Exception as e:
+                response = {
+                    "status": "failed",
+                    "message": str(e),
+                }
+                return JsonResponse(response, status=HTTP_200_OK)
