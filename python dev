@@ -1,0 +1,38 @@
+----------------------------------------------------------------------------------------------
+
+1.Open the VSCode in local system and open terminal(git bash preferred)
+2. Clone the git branch to local system(git clone -b feature/ARP-1056-Text-Send-Update-Test https://github.com/pmdgithub/text_tool.git)
+3. After cloning is done close the VSCode and open the project in VSCode.
+4. Open terminal and create virtual environment (command : python -m venv venv)
+5. Activate the virtual environment( command : source venv/Scripts/activate)
+6. Install the require packages from requirements file( command : pip install -r requirements.txt)
+7. Also install coverage package(command : pip install coverage)
+8. To run tests execute command : coverage run -m pytest tests
+9. To check coverage report execute command : coverage report
+10. In the report search for text_send_update/main.py and text_send_update/text_api.py and their respective coverage percentage.
+
+----------------------------------------------------------------------------------------------
+
+# conn = psycopg2.connect(DATABASES['cref_execution'])
+ruleList = ExecuteFunction.dtpsPerNPersonsEvaluatedForClient(_clientID, 100).ToList()
+   
+
+ cursor.execute('''select a.*, b.* from druglist as a, druglistcomponent as b where a.druglistid = b.druglistid''')
+ desc = cursor.description 
+ druglist_component = [
+dict(zip([col[0] for col in desc], row)) 
+for row in cursor.fetchall() 
+ ]
+---------------------------------------------------------------------------------------------
+c.execute('''select * from crefmanager.ruleeffectivenessforclient({},{})'''.format(_clientID,1))
+
+ with connections['cref_execution'].cursor() as c:
+                try:
+                    print ("********** DB connection established ***** ",connections['cref_execution'].settings_dict['NAME'])
+                    # c.callproc("crefmanager.dtpsPerNPersonsEvaluatedForClient", [_clientID, 100])
+                    c.execute('''select * from crefmanager.dtpsPerNPersonsEvaluatedForClient({},{})'''.format(_clientID,100))
+                    ruleList = list(c.fetchall())
+                finally:
+                    c.close()
+            print ("dtpsPerNPersonsEvaluatedForClient",ruleList)
+------------------------------------------------------------------------------------------------
