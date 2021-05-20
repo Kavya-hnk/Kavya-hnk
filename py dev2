@@ -1,0 +1,13 @@
+overlap_entities = {key: value for key, value in overlap.__dict__.items() if
+                                        not key.startswith('__') and not callable(key)}
+                
+                overlap_obj = Overlap(crefdruglistvariableone=overlap_entities['crefdruglistvariableone'],
+                                                         crefdruglistvariabletwo=overlap_entities['crefdruglistvariabletwo'],
+                                                         created_at=overlap_entities['created_at'],
+                                                         created_by=overlap_entities['created_by'],
+                                                         effectivedate=overlap_entities['effectivedate'],
+                                                         retireddate=overlap_entities['retireddate'],
+                                                         minimumoverlap=overlap_entities['minimumoverlap'],
+                                                         maximumoverlap=overlap_entities['maximumoverlap'],
+                                                         overridelookback=overlap_entities['overridelookback'])
+                overlap_obj.save()
