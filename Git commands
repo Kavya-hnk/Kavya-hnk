@@ -1,0 +1,6 @@
+git commands:
+git checkout develop
+git pull -p
+git checkout feature_branch
+git merge develop
+git push origin feature_branch
