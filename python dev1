@@ -1,0 +1,82 @@
+# class SaveNounMappingBTN_OnClick(APIView):
+    #     def post(self,request):
+    #         DrugListNounSELECT = request.GET.get['DrugListNounSELECT'] 
+    #         inNounPatternTBX = request.GET.get['inNounPatternTBX'] 
+    #         inNounTypeDDL = request.GET.get['inNounTypeDDL']
+    #         outNounTypeDDL = request.GET.get('outNounTypeDDL')
+    #         matchMinDDL = request.GET.get('matchMinDDL')
+    #         incExclRDO =  request.GET.get('incExclRDO')
+    #         matchMaxDDL = request.GET.get('incExclRDO')
+
+    #         # DrugListNounSELECT_SelectedValue = self.request.data['DrugListNounSELECT']
+            
+    #         inNounId = str(inNounPatternTBX_Text) is None if DrugListNounSELECT_SelectedValue else "-1"
+    #         inNounText = str(inNounPatternTBX_Text) is None if DrugListNounSELECT.SelectedItem_Text else "%" + inNounPatternTBX_Text + "%"
+
+    #         DrugListNouns = Druglistnoun()
+    #         now = timezone.now()
+    #         DrugListNouns.createdat = now,
+    #         DrugListNouns.createdby = utility.committed_by(),
+    #         DrugListNouns.druglistnounname = inNounText,
+    #         DrugListNouns.ispattern = bytes(inNounText.StartsWith("%") if 1 else 0),
+    #         DrugListNouns.druglistnountypeid = int(inNounTypeDDL_SelectedValue)
+    #         for key, value in DrugListNouns.__dict__.items():
+    #             setattr(Druglistnoun, key, value)
+    #         # Druglistnoun.save()
+    #         inNounId = str(DrugListNouns.druglistnounid)
+    #         hasMappings = False
+
+    #         codesHFD = request.GET.get("codesHFD")
+
+    #         if codesHFD.Value is not None:
+    #             for code in codesHFD.Value.Split('^'):
+    #                 hasMappings = True
+    #                 codeParts = code.Split('|')
+    #                 if (codeParts[0].StartsWith("-")):
+    #                     DrugListNouns =  Druglistnoun()
+    #                     now = timezone.now()
+    #                     DrugListNouns.createdat = now,
+    #                     DrugListNouns.createdby = utility.committed_by(),
+    #                     DrugListNouns.druglistnounname = codeParts[1],
+    #                     DrugListNouns.ispattern = bytes(codeParts[1].StartsWith("%") if 1 else 0),
+    #                     DrugListNouns.druglistnountypeid = int(outNounTypeDDL_SelectedValue)
+    #                     for key, value in DrugListNouns.__dict__.items():
+    #                         setattr(Druglistnoun, key, value)
+    #                     # Druglistnoun.save()
+    #                     codeParts[0] = str(DrugListNouns.druglistnounid)
+
+    #                 drugSub = CommonObjects().Simple_DrugSubstitutionMapping()
+    #                 # drugSub.__id = Guid.NewGuid(),
+    #                 drugSub.__innounid = int(inNounId),
+    #                 drugSub.__innounname = DrugListNounSELECT.SelectedItem_Text,
+    #                 drugSub.__innountype =int(inNounTypeDDL_SelectedValue),
+    #                 drugSub.__outnounid = int(codeParts[0]),
+    #                 drugSub.__outnounname = codeParts[1],
+    #                 drugSub.__matchminimum = utility.GetOverrideValue(matchMinDDL_SelectedValue,
+    #                         CommonObjects.Static.Defaults.DrugSubstitution.MATCH_MIN),
+    #                 drugSub.__matchmaximum = int(matchMaxDDL_SelectedValue),
+    #                 drugSub.__isexclusion = bool(int(incExclRDO_SelectedValue))
+    #                 # drugSubMappings.Add(drugSub);
+    #                 # CreateVariable_MedicationSubstitution.drugSubMappings=[]
+    #                 CreateVariable_MedicationSubstitution.drugSubMappings.append(drugSub)
+    #                 # for key, value in drugSub.__dict__.items():
+    #                 #     setattr(Simple_DrugSubstitutionMapping, key, value)
+
+    #         if (hasMappings == False):
+    #             drugSub = CommonObjects.Simple_DrugSubstitutionMapping()
+    #             # drugSub.__id = Guid.NewGuid(),
+    #             drugSub.__innounid = drugSub.id0_(inNounId),
+    #             drugSub.__innounname = DrugListNounSELECT.SelectedItem_Text,
+    #             drugSub.__innountype = int(inNounTypeDDL_SelectedValue),
+    #             drugSub.__matchminimum = utility.GetOverrideValue(matchMinDDL_SelectedValue, CommonObjects.Static.Defaults.DrugSubstitution.MATCH_MIN),
+    #             drugSub.__matchmaximum = int(matchMaxDDL_SelectedValue),
+    #             drugSub.__isexclusion = bool(int(incExclRDO_SelectedValue))
+    #             CreateVariable_MedicationSubstitution.drugSubMappings.append(drugSub)
+    #             # for key, value in drugSub.__dict__.items():
+    #             #     setattr(CommonObjects.Simple_DrugSubstitutionMapping, key, value)
+
+    #             DrugSubMappingRPTR = {}
+    #             DrugSubMappingRPTR['DataSource'] = CreateVariable_MedicationSubstitution.drugSubMappings
+    #             # DrugSubMappingRPTR.DataBind();
+
+    #             CreateVariable_MedicationSubstitution.ResetSubMappingsInterface()
