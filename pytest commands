@@ -23,3 +23,19 @@ def test_get_white_pages_clients_test(mock_psycopg2):
     sql_data_actions = SQLDataActions()
     res = sql_data_actions.get_white_pages_clients()
     assert res == ["MTM", "ComplexCase"]
+-------------------------------------------------------------------------------------------
+
+from django.test import TestCase
+from django.urls import reverse
+from 
+# import pytest
+
+# Create your tests here.
+# def test():
+#     assert True
+
+class Test_CreateDrugListOverlap (TestCase): 
+    def test_CDLO_Page_Load(self):
+       url=reverse("urlname")
+       response = self.client.get(url,params={})
+       self.assertEqual(response.status_code, 200)
