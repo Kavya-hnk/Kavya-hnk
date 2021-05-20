@@ -1,5 +1,7 @@
-pytest commands: python -m pytest tests\ -s coverage run -m pytest maincode
+pytest commands: python -m pytest tests\ -s 
+coverage run -m pytest maincode
 coverage report -m tests\
+coverage html
 
 
 def test_insert_api_returned_data(mocker):
